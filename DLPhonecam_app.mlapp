@@ -1,0 +1,166 @@
+classdef DLPhonecam_app < matlab.apps.AppBase
+
+    % Properties that correspond to app components
+    properties (Access = public)
+        UIFigure                       matlab.ui.Figure
+        PushbuttonbelowtotakepictureLabel  matlab.ui.control.Label
+        AimyourcameraatthecontentsLabel  matlab.ui.control.Label
+        Image                          matlab.ui.control.Image
+        PleasetakethecontentsoftheFirstAidboxoutandputthemonaplainbackgroundLabel  matlab.ui.control.Label
+        FirstAidBoxContentsCheckLabel  matlab.ui.control.Label
+        Label                          matlab.ui.control.Label
+        PresstotakephotoButton         matlab.ui.control.Button
+        UIAxes                         matlab.ui.control.UIAxes
+    end
+
+    
+    properties (Access = private)
+        Property % Description
+        m;
+        camObj;
+        net;
+        inputSize;
+        newimg;
+        CName;
+        
+    end
+    
+
+    % Callbacks that handle component events
+    methods (Access = private)
+
+        % Code that executes after component creation
+        function startupFcn(app)
+            app.net=alexnet;
+            app.inputSize = app.net.Layers(1).InputSize;
+
+            app.m = mobiledev;
+            app.camObj = camera(app.m,'back');
+            img = snapshot(app.camObj,'immediate');
+        end
+
+        % Callback function: PresstotakephotoButton, UIAxes
+        function PresstotakephotoButtonPushed(app, event)
+            app.AimyourcameraatthecontentsLabel.Visible = 'off'
+            app.PleasetakethecontentsoftheFirstAidboxoutandputthemonaplainbackgroundLabel.Visible = 'off'
+            app.PushbuttonbelowtotakepictureLabel.Visible = 'off'
+            app.UIAxes.Visible = 'on'
+            app.Label.Visible = 'on'
+
+            img = snapshot(app.camObj,'immediate');
+            imshow(img,'Parent',app.UIAxes);
+
+            app.newimg = imresize(img, app.inputSize(1:2));
+            app.CName = classify(app.net,app.newimg);
+
+            CName0 = char(app.CName);
+            x = ['I detect ' CName0];
+            
+
+            app.Label.Text = x;
+
+            system(sprintf('say %s', x));
+
+           
+        end
+    end
+
+    % Component initialization
+    methods (Access = private)
+
+        % Create UIFigure and components
+        function createComponents(app)
+
+            % Get the file path for locating images
+            pathToMLAPP = fileparts(mfilename('fullpath'));
+
+            % Create UIFigure and hide until all components are created
+            app.UIFigure = uifigure('Visible', 'off');
+            app.UIFigure.Color = [0.9882 0.9686 0.9216];
+            app.UIFigure.Position = [100 100 640 480];
+            app.UIFigure.Name = 'MATLAB App';
+
+            % Create UIAxes
+            app.UIAxes = uiaxes(app.UIFigure);
+            zlabel(app.UIAxes, 'Z')
+            app.UIAxes.XTick = [];
+            app.UIAxes.YTick = [];
+            app.UIAxes.Box = 'on';
+            app.UIAxes.ButtonDownFcn = createCallbackFcn(app, @PresstotakephotoButtonPushed, true);
+            app.UIAxes.Visible = 'off';
+            app.UIAxes.Position = [15 81 581 338];
+
+            % Create PresstotakephotoButton
+            app.PresstotakephotoButton = uibutton(app.UIFigure, 'push');
+            app.PresstotakephotoButton.ButtonPushedFcn = createCallbackFcn(app, @PresstotakephotoButtonPushed, true);
+            app.PresstotakephotoButton.Position = [75 33 146 23];
+            app.PresstotakephotoButton.Text = 'Press to take photo';
+
+            % Create Label
+            app.Label = uilabel(app.UIFigure);
+            app.Label.HorizontalAlignment = 'center';
+            app.Label.Visible = 'off';
+            app.Label.Position = [220 33 421 23];
+
+            % Create FirstAidBoxContentsCheckLabel
+            app.FirstAidBoxContentsCheckLabel = uilabel(app.UIFigure);
+            app.FirstAidBoxContentsCheckLabel.HorizontalAlignment = 'center';
+            app.FirstAidBoxContentsCheckLabel.FontName = 'Avenir';
+            app.FirstAidBoxContentsCheckLabel.FontSize = 14;
+            app.FirstAidBoxContentsCheckLabel.FontWeight = 'bold';
+            app.FirstAidBoxContentsCheckLabel.Position = [207 443 198 28];
+            app.FirstAidBoxContentsCheckLabel.Text = 'First Aid Box Contents Check';
+
+            % Create PleasetakethecontentsoftheFirstAidboxoutandputthemonaplainbackgroundLabel
+            app.PleasetakethecontentsoftheFirstAidboxoutandputthemonaplainbackgroundLabel = uilabel(app.UIFigure);
+            app.PleasetakethecontentsoftheFirstAidboxoutandputthemonaplainbackgroundLabel.Position = [88 259 465 34];
+            app.PleasetakethecontentsoftheFirstAidboxoutandputthemonaplainbackgroundLabel.Text = 'Please take the contents of the First Aid box out and put them on a plain background';
+
+            % Create Image
+            app.Image = uiimage(app.UIFigure);
+            app.Image.Position = [564 406 63 65];
+            app.Image.ImageSource = fullfile(pathToMLAPP, 'IMG_0633.jpg');
+
+            % Create AimyourcameraatthecontentsLabel
+            app.AimyourcameraatthecontentsLabel = uilabel(app.UIFigure);
+            app.AimyourcameraatthecontentsLabel.Position = [231 230 180 22];
+            app.AimyourcameraatthecontentsLabel.Text = 'Aim your camera at the contents';
+
+            % Create PushbuttonbelowtotakepictureLabel
+            app.PushbuttonbelowtotakepictureLabel = uilabel(app.UIFigure);
+            app.PushbuttonbelowtotakepictureLabel.Position = [228 200 186 22];
+            app.PushbuttonbelowtotakepictureLabel.Text = 'Push button below to take picture';
+
+            % Show the figure after all components are created
+            app.UIFigure.Visible = 'on';
+        end
+    end
+
+    % App creation and deletion
+    methods (Access = public)
+
+        % Construct app
+        function app = DLPhonecam_app
+
+            % Create UIFigure and components
+            createComponents(app)
+
+            % Register the app with App Designer
+            registerApp(app, app.UIFigure)
+
+            % Execute the startup function
+            runStartupFcn(app, @startupFcn)
+
+            if nargout == 0
+                clear app
+            end
+        end
+
+        % Code that executes before app deletion
+        function delete(app)
+
+            % Delete UIFigure when app is deleted
+            delete(app.UIFigure)
+        end
+    end
+end
